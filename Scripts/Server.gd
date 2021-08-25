@@ -1,16 +1,22 @@
 extends Node
 
+var network = NetworkedMultiplayerENet.new()
+var port = 1909
+var max_players = 100
 
-# Declare member variables here. Examples:
-# var a = 2
-# var b = "text"
-
-
-# Called when the node enters the scene tree for the first time.
 func _ready():
-	pass # Replace with function body.
+	start_server()
 
+func start_server():
+	network.create_server(port, max_players)
+	get_tree().set_network_peer(network)
+	print("Server started!")
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-#func _process(delta):
-#	pass
+	network.connect("peer_connected", self, "user_connected")
+	network.connect("peer_disconnected", self, "user_disconnected")
+
+func user_connected(player_id):
+	print("User " + str(player_id) + " connected!")
+
+func user_disconnected(player_id):
+	print("User " + str(player_id) + " disconnected!")
