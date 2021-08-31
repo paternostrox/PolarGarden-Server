@@ -8,16 +8,6 @@
 
 config_version=4
 
-_global_script_classes=[ {
-"base": "Node",
-"class": "PlantData",
-"language": "GDScript",
-"path": "res://Scripts/data types/PlantData.gd"
-} ]
-_global_script_class_icons={
-"PlantData": ""
-}
-
 [application]
 
 config/name="polargarden-server"

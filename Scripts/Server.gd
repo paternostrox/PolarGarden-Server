@@ -33,11 +33,11 @@ func user_disconnected(player_id):
 remote func serve_interaction(requester, pos: Vector3):
 	var x = clamp(floor(pos.x), 0, grid_width-1)
 	var z = clamp(floor(pos.z), 0, grid_depth-1)
-	var gridpos = Vector3(x,0,z) 
+	var gridpos = Vector3(x,0,z)
 
 	var name = grid[x][z]
 	if name.empty():
-		grid[x][z] = name
+		grid[x][z] = "full"
 		var plant_data = generate_plant()
 		rpc_id(0,"return_add",requester, plant_data, gridpos)
 	else:
@@ -51,6 +51,11 @@ func create_grid():
 		for _y in range(grid_depth):
 			grid[x].append("")
 
+func generate_color(h_lower: float, h_upper: float, s_lower: float, s_upper: float, v_lower: float, v_upper: float):
+	var color = Color.from_hsv(rng.randf_range(h_lower,h_upper),rng.randf_range(s_lower,s_upper),rng.randf_range(v_lower,v_upper))
+	return color
+
+
 func generate_plant(head_count:= 0):
 
 	if(head_count == 0):
@@ -61,11 +66,13 @@ func generate_plant(head_count:= 0):
 	var stalk_data = generate_stalk()
 	plant_data.append(stalk_data[0])
 	plant_data.append(stalk_data[1])
+	plant_data.append(generate_color(.3,.4,.75,.95,.7,.85))
 
 	for _i in range(1,head_count + 1):
 		var head_data = generate_head()
 		plant_data.append(head_data[0])
 		plant_data.append(head_data[1])
+		plant_data.append(generate_color(0,1,.75,.95,.8,.9))
 
 	return plant_data.duplicate(true)
 
