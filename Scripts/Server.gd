@@ -37,12 +37,18 @@ remote func serve_interaction(requester, pos: Vector3):
 
 	var name = grid[x][z]
 	if name.empty():
-		grid[x][z] = "full"
 		var plant_data = generate_plant()
-		rpc_id(0,"return_add",requester, plant_data, gridpos)
+		var jplant_data = to_json(plant_data)
+		grid[x][z] = jplant_data
+		rpc_id(0,"return_add",requester, jplant_data, gridpos)
 	else:
 		grid[x][z] = ""
 		rpc_id(0,"return_remove",requester, gridpos)
+
+remote func serve_join(requester):
+	var player_id =  get_tree().get_rpc_sender_id()
+	var jgarden = to_json(grid)
+	rpc_id(player_id,"return_garden",requester, jgarden)
 
 func create_grid():
 	# make grid matrix
@@ -74,7 +80,7 @@ func generate_plant(head_count:= 0):
 		plant_data.append(head_data[1])
 		plant_data.append(generate_color(0,1,.75,.95,.8,.9))
 
-	return plant_data.duplicate(true)
+	return plant_data
 
 func generate_stalk():
 	var boundaries = []
