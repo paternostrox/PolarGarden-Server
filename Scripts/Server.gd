@@ -48,6 +48,7 @@ remote func serve_interaction(requester, pos: Vector3):
 remote func serve_join(requester):
 	var player_id =  get_tree().get_rpc_sender_id()
 	var jgarden = to_json(grid)
+	print("SERVE JOIN CALLED")
 	rpc_id(player_id,"return_garden",requester, jgarden)
 
 func create_grid():
@@ -57,8 +58,8 @@ func create_grid():
 		for _y in range(grid_depth):
 			grid[x].append("")
 
-func generate_color(h_lower: float, h_upper: float, s_lower: float, s_upper: float, v_lower: float, v_upper: float):
-	var color = Color.from_hsv(rng.randf_range(h_lower,h_upper),rng.randf_range(s_lower,s_upper),rng.randf_range(v_lower,v_upper))
+func generate_color_values(h_lower: float, h_upper: float, s_lower: float, s_upper: float, v_lower: float, v_upper: float):
+	var color = [rng.randf_range(h_lower,h_upper),rng.randf_range(s_lower,s_upper),rng.randf_range(v_lower,v_upper)]
 	return color
 
 
@@ -72,13 +73,13 @@ func generate_plant(head_count:= 0):
 	var stalk_data = generate_stalk()
 	plant_data.append(stalk_data[0])
 	plant_data.append(stalk_data[1])
-	plant_data.append(generate_color(.3,.4,.75,.95,.7,.85))
+	plant_data.append_array(generate_color_values(.3,.4,.75,.95,.7,.85))
 
 	for _i in range(1,head_count + 1):
 		var head_data = generate_head()
 		plant_data.append(head_data[0])
 		plant_data.append(head_data[1])
-		plant_data.append(generate_color(0,1,.75,.95,.8,.9))
+		plant_data.append_array(generate_color_values(0,1,.75,.95,.8,.9))
 
 	return plant_data
 
@@ -147,8 +148,8 @@ func generate_head():
 	var flower_length
 
 	# CHOOSE FLOWER TYPE
-	var flower_type = rng.randi_range(0, 1)
-	#var flower_type = 0
+	#var flower_type = rng.randi_range(0, 1)
+	var flower_type = 0
 
 	match flower_type:
 		# 1 Spherical Rational Polar (theta, theta)
@@ -166,7 +167,7 @@ func generate_head():
 			#flower_length = PI * vals[2] * p
 			flower_length = PI * 2 * vals[2]
 		
-		# 1 Spherical Rational Polar (theta, theta)
+		# 1 Spherical Rational Polar (theta, 1)
 		1:
 			boundaries = [
 				4,16, # a
