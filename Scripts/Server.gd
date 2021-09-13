@@ -11,6 +11,8 @@ var grid_depth : int = 20 # in units
 var cell_size : float = 1 # in meters
 var grid = []
 
+var max_head = 3
+
 func _ready():
 	rng.randomize()
 	create_grid()
@@ -30,26 +32,74 @@ func user_connected(player_id):
 func user_disconnected(player_id):
 	print("User " + str(player_id) + " disconnected!")
 
-remote func serve_interaction(requester, pos: Vector3):
-	var x = clamp(floor(pos.x), 0, grid_width-1)
-	var z = clamp(floor(pos.z), 0, grid_depth-1)
-	var gridpos = Vector3(x,0,z)
-
-	var name = grid[x][z]
-	if name.empty():
-		var plant_data = generate_plant()
-		var jplant_data = to_json(plant_data)
-		grid[x][z] = jplant_data
-		rpc_id(0,"return_add",requester, jplant_data, gridpos)
-	else:
-		grid[x][z] = ""
-		rpc_id(0,"return_remove",requester, gridpos)
-
 remote func serve_join(requester):
 	var player_id =  get_tree().get_rpc_sender_id()
 	var jgarden = to_json(grid)
-	print("SERVE JOIN CALLED")
 	rpc_id(player_id,"return_garden",requester, jgarden)
+
+remote func serve_interaction(requester, pos: Vector3):
+	var gridpos = world2grid(pos)
+
+	var name = grid[gridpos.x][gridpos.z]
+	if name.empty():
+		var plant_data = generate_plant()
+		register_plant(requester,gridpos, plant_data)
+	else:
+		grid[gridpos.x][gridpos.z] = ""
+		rpc_id(0,"return_remove",requester, gridpos)
+
+# Works with just 1 head 
+func serve_cross(requester, parent_poss, pos):
+	var plant_data = []
+	var mean_function = ""
+	var mean_length = 0
+	var mean_color = [0.0,0.0,0.0]
+	var size = parent_poss.size()
+
+	var stalk_data = generate_stalk()
+	plant_data.append(stalk_data[0])
+	plant_data.append(stalk_data[1])
+	plant_data.append_array(generate_color_values(.3,.4,.75,.95,.7,.85))
+
+	for i in range(size):
+		var gridpos = world2grid(parent_poss[i])
+
+		var name = grid[gridpos.x][gridpos.z]
+		if name.empty():
+			push_error("Bad Request. Cant cross a non-existing plant.")
+			return
+		else:
+			var p = JSON.parse(name)
+			if typeof(p.result) == TYPE_ARRAY:
+				var data = p.result
+				if(i != 0):
+					mean_function += " + "
+				mean_function += data[5]
+				mean_length += data[6]
+				mean_color = [mean_color[0] + data[7], mean_color[1] + data[8], mean_color[2] + data[9]]
+			else:
+				push_error("Parse error. Unexpected type.")
+				return
+
+	mean_function += " /%f" % size
+	mean_length = mean_length / size
+	mean_color = [mean_color[0] / size, mean_color[1] + size, mean_color[2] + size]
+	plant_data.append(mean_function)
+	plant_data.append(mean_length)
+	plant_data.append_array(mean_color)
+	var gridpos = world2grid(pos)
+	register_plant(requester, gridpos, plant_data)
+
+func world2grid(pos):
+	var x = clamp(floor(pos.x), 0, grid_width-1)
+	var z = clamp(floor(pos.z), 0, grid_depth-1)
+	var gridpos = Vector3(x,0,z)
+	return gridpos
+
+func register_plant(requester, gridpos, plant_data):
+	var jplant_data = to_json(plant_data)
+	grid[gridpos.x][gridpos.z] = jplant_data
+	rpc_id(0,"return_add",requester, jplant_data, gridpos)
 
 func create_grid():
 	# make grid matrix
@@ -66,7 +116,7 @@ func generate_color_values(h_lower: float, h_upper: float, s_lower: float, s_upp
 func generate_plant(head_count:= 0):
 
 	if(head_count == 0):
-		head_count = rng.randi_range(1,6)
+		head_count = rng.randi_range(1,max_head)
 
 	var plant_data = []
 
