@@ -49,7 +49,7 @@ remote func serve_interaction(requester, pos: Vector3):
 		rpc_id(0,"return_remove",requester, gridpos)
 
 # Works with just 1 head 
-func serve_cross(requester, parent_poss, pos):
+remote func serve_cross(requester, parent_poss, pos):
 	var plant_data = []
 	var mean_function = ""
 	var mean_length = 0
@@ -72,7 +72,9 @@ func serve_cross(requester, parent_poss, pos):
 			var p = JSON.parse(name)
 			if typeof(p.result) == TYPE_ARRAY:
 				var data = p.result
-				if(i != 0):
+				if(i == 0):
+					mean_function += "("
+				else:
 					mean_function += " + "
 				mean_function += data[5]
 				mean_length += data[6]
@@ -81,7 +83,7 @@ func serve_cross(requester, parent_poss, pos):
 				push_error("Parse error. Unexpected type.")
 				return
 
-	mean_function += " /%f" % size
+	mean_function += ") / %f" % size
 	mean_length = mean_length / size
 	mean_color = [mean_color[0] / size, mean_color[1] + size, mean_color[2] + size]
 	plant_data.append(mean_function)
@@ -241,7 +243,7 @@ func generate_head():
 
 	flower_disturbance_eq = "Vector3(sin(%f*t),sin(%f*t),sin(%f*t))" % [vals[0], vals[0], vals[0]]
 
-	flower_eq = flower_eq + " + " + flower_disturbance_eq
+	#flower_eq = flower_eq + " + " + flower_disturbance_eq
 		
 	return [flower_eq, flower_length]
 
