@@ -11,7 +11,7 @@ var grid_depth : int = 20 # in units
 var cell_size : float = 1 # in meters
 var grid = []
 
-var max_head = 3
+var max_head = 1
 
 func _ready():
 	rng.randomize()
@@ -85,7 +85,7 @@ remote func serve_cross(requester, parent_poss, pos):
 
 	mean_function += ") / %f" % size
 	mean_length = mean_length / size
-	mean_color = [mean_color[0] / size, mean_color[1] + size, mean_color[2] + size]
+	mean_color = [mean_color[0] / size, mean_color[1] / size, mean_color[2] / size]
 	plant_data.append(mean_function)
 	plant_data.append(mean_length)
 	plant_data.append_array(mean_color)
@@ -158,7 +158,7 @@ func generate_stalk():
 				4,16, # c
 				2,6 # k
 			]
-			vals = get_values_inrange(boundaries)
+			vals = get_valuesf_inrange(boundaries)
 
 			stalk_base_eq = "Vector3(%f*sin(%f*t), %f*t, %f*cos(%f*t))" % [vals[0], vals[3], vals[1], vals[0], vals[3]]
 			
@@ -172,7 +172,7 @@ func generate_stalk():
 				30,100, # a
 				2,8 # b
 			]
-			vals = get_values_inrange(boundaries)
+			vals = get_valuesf_inrange(boundaries)
 
 			stalk_base_eq = "Vector3(0, %f*ease(t/10, 0.2), 0)" % [vals[0]] # REVIEW THIS
 			
@@ -183,7 +183,7 @@ func generate_stalk():
 	boundaries = [
 		1,4
 	]
-	vals = get_values_inrange(boundaries)
+	vals = get_valuesf_inrange(boundaries)
 
 	stalk_disturbance_eq = "Vector3(sin(%f*t),sin(%f*t),sin(%f*t))" % [vals[0], vals[0], vals[0]]
 
@@ -200,18 +200,18 @@ func generate_head():
 	var flower_length
 
 	# CHOOSE FLOWER TYPE
-	#var flower_type = rng.randi_range(0, 1)
-	var flower_type = 0
+	var flower_type = rng.randi_range(0, 2)
+	#var flower_type = 0
 
 	match flower_type:
-		# 1 Spherical Rational Polar (theta, theta)
+		# 1 Spherical Rational Polar (cos(t), t, t)
 		0:
 			boundaries = [
 				4,16, # a
 				1,20, # n
 				1,20 # d
 			]
-			vals = get_values_inrange(boundaries)
+			vals = get_valuesi_inrange(boundaries)
 
 			flower_eq = "spherical2cartesian(Vector3(%f*cos(%f/%f*t), t, t))" % [vals[0], vals[1], vals[2]]
 			
@@ -219,27 +219,39 @@ func generate_head():
 			#flower_length = PI * vals[2] * p
 			flower_length = PI * 2 * vals[2]
 		
-		# 1 Spherical Rational Polar (theta, 1)
+		# 2 Spherical Rational Polar (abs(cos(t)),t, 1)
 		1:
 			boundaries = [
 				4,16, # a
 				1,20, # n
 				1,20 # d
 			]
-			vals = get_values_inrange(boundaries)
+			vals = get_valuesi_inrange(boundaries)
 
 			flower_eq = "spherical2cartesian(Vector3(%f*abs(cos(%f/%f*t)), t, 1))" % [vals[0], vals[1], vals[2]]
 			
+			flower_length = PI * 2 * vals[2]
+
+		# 3 Cone (a.t, t, cos(t))
+		2:
+			boundaries = [
+				0.4,0.7, # a
+				50,100 # c
+			]
+			vals = get_valuesf_inrange(boundaries)
+
+			flower_eq = "spherical2cartesian(Vector3(%f*t, t, cos(t)))" % [vals[0]]
+			
 			#var p = 2 if ((vals[1]*vals[2]) % 2 == 0) else 1
 			#flower_length = PI * vals[2] * p
-			flower_length = PI * 2 * vals[2]
+			flower_length = vals[1]
 
 	# FLOWER DISTURBANCE
 
 	boundaries = [
 		1,4
 	]
-	vals = get_values_inrange(boundaries)
+	vals = get_valuesi_inrange(boundaries)
 
 	flower_disturbance_eq = "Vector3(sin(%f*t),sin(%f*t),sin(%f*t))" % [vals[0], vals[0], vals[0]]
 
@@ -247,8 +259,15 @@ func generate_head():
 		
 	return [flower_eq, flower_length]
 
-func get_values_inrange(var boundaries):
-	var vals = PoolIntArray()
+func get_valuesi_inrange(var boundaries):
+	var vals = PoolRealArray()
+	# Get random values (within the boundaries)
+	for i in range(boundaries.size()/2):
+		vals.append(rng.randi_range(boundaries[i],boundaries[i+1]))
+	return vals
+
+func get_valuesf_inrange(var boundaries):
+	var vals = PoolRealArray()
 	# Get random values (within the boundaries)
 	for i in range(boundaries.size()/2):
 		vals.append(rng.randf_range(boundaries[i],boundaries[i+1]))
