@@ -6,12 +6,14 @@ var max_players = 100
 
 var rng = RandomNumberGenerator.new()
 
-var grid_width : int = 20 # in units
-var grid_depth : int = 20 # in units
+var grid_width : int = 40 # in units
+var grid_depth : int = 40 # in units
 var cell_size : float = 1 # in meters
 var grid = []
 
 var max_head = 1
+
+var next_player_number = 0
 
 func _ready():
 	rng.randomize()
@@ -28,6 +30,8 @@ func start_server():
 
 func user_connected(player_id):
 	print("User " + str(player_id) + " connected!")
+	rpc_id(player_id, "set_player_number", next_player_number)
+	next_player_number += 1
 
 func user_disconnected(player_id):
 	print("User " + str(player_id) + " disconnected!")
@@ -77,26 +81,35 @@ remote func serve_cross(requester, parent_poss, pos):
 				else:
 					mean_function += " + "
 				mean_function += data[5]
-				mean_length += data[6]
+				if(mean_length < data[6]):
+					mean_length = data[6]
 				mean_color = [mean_color[0] + data[7], mean_color[1] + data[8], mean_color[2] + data[9]]
 			else:
 				push_error("Parse error. Unexpected type.")
 				return
 
 	mean_function += ") / %f" % size
-	mean_length = mean_length / size
+	#mean_length = mean_length / size
 	mean_color = [mean_color[0] / size, mean_color[1] / size, mean_color[2] / size]
 	plant_data.append(mean_function)
 	plant_data.append(mean_length)
 	plant_data.append_array(mean_color)
 	var gridpos = world2grid(pos)
 	register_plant(requester, gridpos, plant_data)
+	
 
 func world2grid(pos):
-	var x = clamp(floor(pos.x), 0, grid_width-1)
-	var z = clamp(floor(pos.z), 0, grid_depth-1)
+	pos.x += grid_width/2
+	pos.z += grid_depth/2
+	var x = clamp(floor(pos.x), 0, grid_width)
+	var z = clamp(floor(pos.z), 0, grid_depth)
 	var gridpos = Vector3(x,0,z)
 	return gridpos
+
+func grid2world(pos):
+	pos.x -= grid_width/2
+	pos.z -= grid_depth/2
+	return pos
 
 func register_plant(requester, gridpos, plant_data):
 	var jplant_data = to_json(plant_data)
@@ -200,16 +213,16 @@ func generate_head():
 	var flower_length
 
 	# CHOOSE FLOWER TYPE
-	var flower_type = rng.randi_range(0, 2)
+	var flower_type = rng.randi_range(0, 5)
 	#var flower_type = 0
 
 	match flower_type:
 		# 1 Spherical Rational Polar (cos(t), t, t)
 		0:
 			boundaries = [
-				4,16, # a
-				1,20, # n
-				1,20 # d
+				8,20, # a
+				1,12, # n
+				1,12 # d
 			]
 			vals = get_valuesi_inrange(boundaries)
 
@@ -219,12 +232,26 @@ func generate_head():
 			#flower_length = PI * vals[2] * p
 			flower_length = PI * 2 * vals[2]
 		
-		# 2 Spherical Rational Polar (abs(cos(t)),t, 1)
+		# 2 Spherical Int Polar (cos(t), t, t)
 		1:
 			boundaries = [
-				4,16, # a
-				1,20, # n
-				1,20 # d
+				8,20, # a
+				1,10 # b
+			]
+			vals = get_valuesf_inrange(boundaries)
+
+			flower_eq = "spherical2cartesian(Vector3(%f*cos(%f*t), t, t))" % [vals[0], vals[1]]
+			
+			#var p = 2 if ((vals[1]*vals[2]) % 2 == 0) else 1
+			#flower_length = PI * vals[2] * p
+			flower_length = PI * 2
+
+		# 3 Spherical Rational Polar (abs(cos(t)),t, 1)
+		2:
+			boundaries = [
+				8,20, # a
+				1,12, # n
+				1,12 # d
 			]
 			vals = get_valuesi_inrange(boundaries)
 
@@ -232,43 +259,68 @@ func generate_head():
 			
 			flower_length = PI * 2 * vals[2]
 
-		# 3 Cone (a.t, t, cos(t))
-		2:
+		# 4 Butterfly
+		3:
 			boundaries = [
-				0.4,0.7, # a
-				50,100 # c
+				1,10, # a
+				1,20, # r
+				1,10 # b
+			]
+			vals = get_valuesi_inrange(boundaries)
+
+			flower_eq = "spherical2cartesian(Vector3(12*pow(sin(%f*t),2) + %f*cos(%f*t), t, t))" % [vals[0], vals[1], vals[2]]
+			
+			flower_length = PI * 2
+
+		# 5 RD Spade only
+		4:
+			boundaries = [
+				6,16, # a
+				1,2 # b
 			]
 			vals = get_valuesf_inrange(boundaries)
 
-			flower_eq = "spherical2cartesian(Vector3(%f*t, t, cos(t)))" % [vals[0]]
+			flower_eq = "spherical2cartesian(Vector3(%f*asin(cos(%f*t + 0.97)), t, t))" % [vals[0], vals[1]]
 			
-			#var p = 2 if ((vals[1]*vals[2]) % 2 == 0) else 1
-			#flower_length = PI * vals[2] * p
-			flower_length = vals[1]
+			flower_length = PI * 4
+
+		# 6 RD Spade w/ strips
+		5:
+			boundaries = [
+				2,5 # a
+			]
+			vals = get_valuesf_inrange(boundaries)
+
+			flower_eq = "spherical2cartesian(Vector3(%f*(2.8*pow(round(sin(1.2*t)),2) + pow(round(cos(1.2*t)),2) + 3*asin(cos(1.5*t + 0.97))), t, t))" % [vals[0]]
+			
+			flower_length = PI * 20
+
+
+			"spherical2cartesian(Vector3(3*(2.8*pow(round(sin(1.2*t)),2) + pow(round(cos(1.2*t)),2) + 3*asin(cos(1.5*t + 0.97))), t, t))"
 
 	# FLOWER DISTURBANCE
 
-	boundaries = [
-		1,4
-	]
-	vals = get_valuesi_inrange(boundaries)
+	#boundaries = [
+	#	1,4
+	#]
+	#vals = get_valuesi_inrange(boundaries)
 
-	flower_disturbance_eq = "Vector3(sin(%f*t),sin(%f*t),sin(%f*t))" % [vals[0], vals[0], vals[0]]
+	#flower_disturbance_eq = "Vector3(sin(%f*t),sin(%f*t),sin(%f*t))" % [vals[0], vals[0], vals[0]]
 
 	#flower_eq = flower_eq + " + " + flower_disturbance_eq
 		
 	return [flower_eq, flower_length]
 
 func get_valuesi_inrange(var boundaries):
-	var vals = PoolRealArray()
+	var vals = []
 	# Get random values (within the boundaries)
-	for i in range(boundaries.size()/2):
+	for i in range(0,boundaries.size(),2):
 		vals.append(rng.randi_range(boundaries[i],boundaries[i+1]))
 	return vals
 
 func get_valuesf_inrange(var boundaries):
-	var vals = PoolRealArray()
+	var vals = []
 	# Get random values (within the boundaries)
-	for i in range(boundaries.size()/2):
+	for i in range(0,boundaries.size(),2):
 		vals.append(rng.randf_range(boundaries[i],boundaries[i+1]))
 	return vals
