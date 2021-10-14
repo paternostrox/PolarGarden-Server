@@ -55,15 +55,18 @@ remote func serve_interaction(requester, pos: Vector3):
 # Works with just 1 head 
 remote func serve_cross(requester, parent_poss, pos):
 	var plant_data = []
-	var mean_function = ""
-	var mean_length = 0
-	var mean_color = [0.0,0.0,0.0]
+	var stalk_eqmean = ""
+	var stalk_length = 0
+	var stalk_color = [0.0,0.0,0.0]
+	var head_eqmean = ""
+	var head_length = 0
+	var head_color = [0.0,0.0,0.0]
 	var size = parent_poss.size()
 
-	var stalk_data = generate_stalk()
-	plant_data.append(stalk_data[0])
-	plant_data.append(stalk_data[1])
-	plant_data.append_array(generate_color_values(.3,.4,.75,.95,.7,.85))
+	#var stalk_data = generate_stalk()
+	#plant_data.append(stalk_data[0])
+	#plant_data.append(stalk_data[1])
+	#plant_data.append_array(generate_color_values(.3,.4,.75,.95,.7,.85))
 
 	for i in range(size):
 		var gridpos = world2grid(parent_poss[i])
@@ -77,23 +80,32 @@ remote func serve_cross(requester, parent_poss, pos):
 			if typeof(p.result) == TYPE_ARRAY:
 				var data = p.result
 				if(i == 0):
-					mean_function += "("
+					stalk_eqmean += "("
+					head_eqmean += "("
 				else:
-					mean_function += " + "
-				mean_function += data[5]
-				if(mean_length < data[6]):
-					mean_length = data[6]
-				mean_color = [mean_color[0] + data[7], mean_color[1] + data[8], mean_color[2] + data[9]]
+					stalk_eqmean += " + "
+					head_eqmean += " + "
+				stalk_eqmean += data[0]
+				head_eqmean += data[5]
+				if(stalk_length < data[1]):
+					stalk_length = data[1]
+				if(head_length < data[6]):
+					head_length = data[6]
+				head_color = [head_color[0] + data[7], head_color[1] + data[8], head_color[2] + data[9]]
 			else:
 				push_error("Parse error. Unexpected type.")
 				return
 
-	mean_function += ") / %f" % size
-	#mean_length = mean_length / size
-	mean_color = [mean_color[0] / size, mean_color[1] / size, mean_color[2] / size]
-	plant_data.append(mean_function)
-	plant_data.append(mean_length)
-	plant_data.append_array(mean_color)
+	stalk_eqmean += ") / %f" % size
+	head_eqmean += ") / %f" % size
+	#head_length = head_length / size
+	head_color = [head_color[0] / size, head_color[1] / size, head_color[2] / size]
+	plant_data.append(stalk_eqmean)
+	plant_data.append(stalk_length)
+	plant_data.append_array(generate_color_values(.3,.4,.75,.95,.7,.85))
+	plant_data.append(head_eqmean)
+	plant_data.append(head_length)
+	plant_data.append_array(head_color)
 	var gridpos = world2grid(pos)
 	register_plant(requester, gridpos, plant_data)
 	
@@ -157,8 +169,8 @@ func generate_stalk():
 	var stalk_disturbance_eq
 	var stalk_length
 
-	#var stalk_type = rng.randi_range(0, 1)
-	var stalk_type = 1
+	var stalk_type = rng.randi_range(0, 1)
+	#var stalk_type = 1
 
 	# CHOOSE STALK TYPE
 	match stalk_type:
@@ -275,7 +287,7 @@ func generate_head():
 		# 5 RD Spade only
 		4:
 			boundaries = [
-				6,16, # a
+				6,14, # a
 				1,2 # b
 			]
 			vals = get_valuesf_inrange(boundaries)
@@ -287,7 +299,7 @@ func generate_head():
 		# 6 RD Spade w/ strips
 		5:
 			boundaries = [
-				2,5 # a
+				2,4 # a
 			]
 			vals = get_valuesf_inrange(boundaries)
 
